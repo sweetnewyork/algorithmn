@@ -2,6 +2,8 @@
 #include <fstream>
 #include <string>
 
+#include <math.h>
+
 #include "mass_diffusion.h"
 #include "heat_conduction.h"
 #include "collaborative_filter.h"
@@ -10,23 +12,16 @@
 //+ container of users and items.
 int main(int argc, char **argv)
 {
+
+	std::string t_file;
+	std::cout << "Info: Enter the file name of the training set" << std::endl;
+	std::cin >> t_file;
+
 	user_container user_list;
 	item_container item_list;
 
-	--argc; ++argv;
-	if (argc > 0 && **argv == '-' && (*argv)[1] == 'n')
-	{
-		--argc;
-		++argv;
-	}
-	if (argc < 1)
-	{
-		std::cout << "Usage: data_analysis [-n] file." << std::endl;
-		return -1;
-	}
-
-	std::ifstream fin(*argv);
-	if (!fin.is_open())
+	std::ifstream fin1(t_file);
+	if (!fin1.is_open())
 	{
 		std::cout << "Error: file not found." << std::endl;
 		exit(0);
@@ -34,10 +29,10 @@ int main(int argc, char **argv)
 
 	std::cout << "Info: reading the file..." << std::endl;
 
-	while (!fin.eof())
+	while (!fin1.eof())
 	{
 		std::string temp;
-		std::getline(fin, temp);
+		std::getline(fin1, temp);
 
 		int pivot = temp.find(',');
 		if (pivot < 0)
@@ -62,11 +57,14 @@ int main(int argc, char **argv)
 		{
 			user_list[user_n] = new user;
 			user_list[user_n]->user_index = user_n;
-			user_list[user_n]->interest_number = 0;
+			user_list[user_n]->user_score = 0;
+			user_list[user_n]->interest_number = 1;
 			user_list[user_n]->interest_list = _relation;
 		}
 		else
 		{
+			user_list[user_n]->interest_number++;
+
 			relation *_last = NULL;
 			relation *_cursor = user_list[user_n]->interest_list;
 			while (true)
@@ -90,11 +88,14 @@ int main(int argc, char **argv)
 		{
 			item_list[item_n] = new item;
 			item_list[item_n]->item_index = item_n;
-			item_list[item_n]->fan_number = 0;
+			item_list[item_n]->item_score = 0;
+			item_list[item_n]->fan_number = 1;
 			item_list[item_n]->fan_list = _relation;
 		}
 		else
 		{
+			item_list[item_n]->fan_number++;
+
 			relation *_last = NULL;
 			relation *_cursor = item_list[item_n]->fan_list;
 			while (true)
@@ -118,40 +119,6 @@ int main(int argc, char **argv)
 		_relation->interest = item_list[item_n];
 	}
 
-	for (_container_number_ i = 0; i < user_list.size(); i++)
-	{
-		if (user_list[i] != NULL)
-		{
-			relation *_relation = (user_list[i])->interest_list;
-
-			if (_relation == NULL)
-				continue;
-
-			_container_number_ count = 0;
-			do
-				count++;
-			while ((_relation->similar_fan != NULL) && (_relation = _relation->similar_fan));
-			(user_list[i])->interest_number = count;
-		}
-	}
-
-	for (_container_number_ i = 0; i < item_list.size(); i++)
-	{
-		if (item_list[i] != NULL)
-		{
-			relation *_relation = (item_list[i])->fan_list;
-
-			if (_relation == NULL)
-				continue;
-
-			_container_number_ count = 0;
-			do
-				count++;
-			while ((_relation->similar_interest != NULL) && (_relation = _relation->similar_interest));
-			(item_list[i])->fan_number = count;
-		}
-	}
-
 	init(&user_list, &item_list);
 
 	return 0;
@@ -159,16 +126,7 @@ int main(int argc, char **argv)
 
 void init(user_container* _ulist, item_container* _ilist)
 {
-
-	for (_container_number_ i = 0; i < _ulist->size(); i++)
-		if ((*_ulist)[i] != NULL)
-			(*_ulist)[i]->user_score = 0;
-
-	for (_container_number_ i = 0; i < _ilist->size(); i++)
-		if ((*_ilist)[i] != NULL)
-			(*_ilist)[i]->item_score = 0;
-
-	std::cout << "Info: Enter the number of user to be analyzed"
+	std::cout << "Info: Enter the number of user to be analyzed."
 		<< "(1 ~ " << _ulist->size() - 1 << "):" << std::endl;
 
 	_container_number_ query_user;
@@ -183,14 +141,14 @@ void init(user_container* _ulist, item_container* _ilist)
 			break;
 	};
 
-	original_item_container original_item_list;
-
+	key_container init_list;
 	relation* _relation = _relation = (*_ulist)[query_user]->interest_list;
+
 	while (_relation != NULL)
 	{
-		original_item_list.push_back(_relation->interest);
+		init_list.insert(_relation->interest);
 
-		_relation->interest->item_score = 1048576;
+		_relation->interest->item_score = 1;
 		_relation = _relation->similar_fan;
 	}
 
@@ -214,19 +172,125 @@ void init(user_container* _ulist, item_container* _ilist)
 		break;
 	}
 
-	original_item_container::iterator it1;
-	for (it1 = original_item_list.begin(); it1 != original_item_list.end(); it1++)
+	key_container::iterator it1;
+	for (it1 = init_list.begin(); it1 != init_list.end(); it1++)
 		(*it1)->item_score = 0;
 
-	scored_item_container scored_item_map;
-	scored_item_container::iterator it2;
+	result_container result_map;
 
 	//sort by map
 	for (_container_number_ i = 0; i < _ilist->size(); i++)
 		if (((*_ilist)[i] != NULL) && ((*_ilist)[i]->item_score != 0))
-			scored_item_map.insert(scored_item_pair((*_ilist)[i]->item_score, (*_ilist)[i]->item_index));
+			result_map.insert(result_pair((*_ilist)[i]->item_score, (*_ilist)[i]->item_index));
+	roc(query_user, &result_map);
 
-	for (it2 = scored_item_map.begin(); it2 != scored_item_map.end(); it2++)
-		std::cout << (*it2).first << ':' << (*it2).second << std::endl;
+	//auto it3 = result_map.begin();
+	//for (int i = 0; i < 5; i++) {
+	//	if (it3 == result_map.end())
+	//		break;
+	//	it3++;
+	//}
+	////result_container(result_map.begin(), it3)
+	inner_similarity(_ulist, _ilist, &result_map);
+}
+
+void roc(_container_number_ query_user, result_container *result_map)
+{
+	test_container test_list;
+
+	std::string testing_f;
+	std::cout << "Info: Enter the file name of the testing set" << std::endl;
+	std::cin >> testing_f;
+
+	std::ifstream fin2(testing_f);
+	if (!fin2.is_open())
+	{
+		std::cout << "Error: file not found." << std::endl;
+		exit(0);
+	}
+
+	std::cout << "Info: reading the file..." << std::endl;
+
+	while (!fin2.eof())
+	{
+		std::string temp;
+		std::getline(fin2, temp);
+
+		int pivot = temp.find(',');
+		if (pivot < 0)
+		{
+			std::cout << "Warning: an unexpected blank line." << std::endl;
+			continue;
+		}
+
+		_container_number_ user_n = std::stoi(temp.substr(0, pivot));
+		_container_number_ item_n = stoi(temp.substr(pivot + 1, temp.size()));
+
+		if (user_n + 1 > test_list.size())
+			test_list.resize(user_n + 1);
+
+		test_list[user_n].insert(item_n);
+	}
+	std::cout << "true:" << test_list[query_user].size() << std::endl;
+
+	int true_positive = 0;
+	roc_container roc_list;
+
+	result_container::iterator it2;
+	for (it2 = result_map->begin(); it2 != result_map->end(); it2++)
+	{
+		if (test_list[query_user].find((*it2).second) != test_list[query_user].end())
+			roc_list.push_back(1);
+		else
+			roc_list.push_back(0);
+	}
+
+	for (_container_number_ i = 0; i < roc_list.size(); i++)
+		std::cout << roc_list[i] << ',';
+
+	std::cout << std::endl;
+}
+
+void inner_similarity(user_container* _ulist, item_container* _ilist, result_container *result_map)
+{
+
+	_value_number_ sum = 0.0;
+	
+	for (auto i = result_map->begin(); i != result_map->end(); i++) {
+		auto j = i;
+		while ((++j) != result_map->end())
+		{
+			_value_number_ similarity = 0;
+
+			relation *_ir = (*_ilist)[(*i).second]->fan_list;
+			relation *_jr = (*_ilist)[(*j).second]->fan_list;
+
+			while (true)
+			{
+				if (_ir == NULL || _jr == NULL)
+					break;
+
+				if ((*_ir).fan->user_index > (*_jr).fan->user_index)
+				{
+					_jr = (*_jr).similar_interest;
+				}
+				else if ((*_ir).fan->user_index < (*_jr).fan->user_index)
+				{
+					_ir = (*_ir).similar_interest;
+				}
+				else
+				{
+					similarity += 1;
+					_ir = (*_ir).similar_interest;
+					_jr = (*_jr).similar_interest;
+					continue;
+				}
+			}
+			sum += similarity / (sqrt((*_ilist)[(*i).second]->fan_number) * sqrt((*_ilist)[(*j).second]->fan_number));
+		}
+	}
+	int length = result_map->size();
+
+	std::cout << (2 * sum / (length * (length - 1))) << std::endl;
 
 }

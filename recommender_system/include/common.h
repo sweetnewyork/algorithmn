@@ -5,6 +5,7 @@
 #include<vector>
 #include<list>
 #include<map>
+#include<set>
 
 //1.declare the structs
 struct user;
@@ -13,14 +14,18 @@ struct relation;
 
 //2.declare the containers
 typedef unsigned int _container_number_;
-typedef unsigned int _value_number_;
+typedef double _value_number_;
+
+typedef std::set<item*> key_container;
 
 typedef std::vector<user*> user_container;
 typedef std::vector<item*> item_container;
 
-typedef std::list<item*> original_item_container;
-typedef std::map<_value_number_, _container_number_> scored_item_container;
-typedef std::pair<_value_number_, _container_number_> scored_item_pair;
+typedef std::map<_value_number_, _container_number_> result_container;
+typedef std::pair<_value_number_, _container_number_> result_pair;
+
+typedef std::vector<std::set<_container_number_>> test_container;
+typedef std::vector<_container_number_> roc_container;
 
 //3.define a struct of user with a score and a list of his
 //+ favorite things.
@@ -41,7 +46,7 @@ struct item
 	relation* fan_list;
 };
 
-//5.define a relationship between a user and a item which interest
+//5.define a relationship between a user and a item which interests
 //+ him, with the reference to the user, and the item. An instance
 //+ of relation should be kept in duo linked list, which belongs to
 //+ the user and the item respectively, at the same time.
@@ -56,5 +61,11 @@ struct relation
 //6.declare the function, which reset the state of the network, zero
 //+ being the socre of each person and each item.
 void init(user_container*, item_container*);
+
+//7.declare the function, which compute the roc of the result
+void roc(_container_number_, result_container*);
+
+//8.declare the function, which compute the inner-table similarity
+void inner_similarity(user_container*, item_container*, result_container*);
 
 #endif // !_MAIN_H

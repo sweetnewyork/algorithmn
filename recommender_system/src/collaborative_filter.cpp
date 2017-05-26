@@ -4,6 +4,7 @@
 
 void collaborative_filter(user_container* _ulist, item_container* _ilist)
 {
+
 	for (_container_number_ i = 0; i < _ilist->size(); i++)
 	{
 		if ((*_ilist)[i] == NULL || (*_ilist)[i]->item_score == 0)
@@ -34,27 +35,14 @@ void collaborative_filter(user_container* _ulist, item_container* _ilist)
 				}
 				else
 				{
-					similarity += 64;
+					similarity += 1;
 					_ir = (*_ir).similar_interest;
 					_jr = (*_jr).similar_interest;
 					continue;
 				}
 			}
 
-			_value_number_ xx = 0;
-			_ir = (*_ilist)[i]->fan_list;
-			do
-				xx += 1;
-			while (((*_ir).similar_interest != NULL) && (_ir = (*_ir).similar_interest));
-
-
-			_value_number_ yy = 0;
-			_jr = (*_ilist)[j]->fan_list;
-			do
-				yy += 1;
-			while (((*_jr).similar_interest != NULL) && (_jr = (*_jr).similar_interest));
-
-			(*_ilist)[j]->item_score +=  int(similarity / (sqrt(double(xx)) * sqrt(double(yy))));
+			(*_ilist)[j]->item_score +=  similarity / (sqrt((*_ilist)[i]->fan_number) * sqrt((*_ilist)[i]->fan_number));
 		}
 	}
 }
